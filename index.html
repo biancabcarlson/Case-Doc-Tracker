@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Case Doc Tracker</title>
+<style>
+:root{
+  --bg:#EEF2EF; --ink:#142019; --muted:#5B665F; --faint:#666E68;
+  --border:#DCE3DD; --border-strong:#C3CDC5; --card:#FFFFFF; --field:#EEF2EF;
+  --accent:#2F6F4E; --accent-hover:#26593F; --accent-active:#1F4A34; --link:#2A5C8A;
+  --success:#26593F; --radius:12px; --radius-sm:8px;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased;}
+.wrap{max-width:840px;margin:0 auto;padding:40px 20px 64px;}
+h1{font-size:24px;font-weight:700;margin:0 0 8px;letter-spacing:-.01em;color:var(--ink);}
+p.lede{font-size:14px;color:var(--muted);margin:0 0 28px;max-width:64ch;}
+h2.section{font-size:15px;font-weight:700;margin:28px 0 12px;color:var(--ink);}
+h2.section:first-of-type{margin-top:0;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:20px;}
+.field{margin-bottom:0;}
+label{display:block;font-size:13px;font-weight:600;color:var(--ink);margin:0 0 6px;}
+input[type=text]{
+  width:100%;font-family:var(--sans);font-size:14px;color:var(--ink);
+  background:var(--field);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:9px 12px;transition:border-color .15s,box-shadow .15s;
+}
+input::placeholder{color:var(--faint);}
+input:focus{outline:none;border-color:var(--link);box-shadow:0 0 0 3px rgba(88,166,255,.15);}
+
+.doc-label{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;color:var(--faint);margin:0 0 10px;}
+.item{display:flex;align-items:center;gap:10px;margin-bottom:8px;background:var(--field);border:1px solid var(--border);padding:9px 10px;border-radius:var(--radius-sm);}
+.item:last-child{margin-bottom:0;}
+.item input[type=checkbox]{width:18px;height:18px;flex-shrink:0;accent-color:var(--accent);}
+.item input[type=text]{flex:1;background:transparent;border:none;padding:2px 0;}
+.item input[type=text]:focus{box-shadow:none;outline:none;border-bottom:1px solid var(--link);}
+
+.btn{appearance:none;border:none;background:var(--accent);color:#fff;font-family:var(--sans);
+  font-size:14px;font-weight:600;padding:10px 18px;border-radius:var(--radius-sm);cursor:pointer;transition:background .15s;}
+.btn:hover{background:var(--accent-hover);}
+.btn:active{background:var(--accent-active);}
+.btn:focus-visible{outline:2px solid var(--link);outline-offset:2px;}
+.btn.secondary{background:transparent;color:var(--muted);border:1px solid var(--border);font-size:13px;padding:8px 14px;}
+.btn.secondary:hover{background:#E3EFE8;border-color:var(--border-strong);color:var(--ink);}
+.btn-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:16px;}
+.add-row{margin-top:10px;}
+
+.msg{font-size:13px;display:none;}
+.msg.show{display:inline-block;}
+.msg.success{color:var(--success);font-weight:600;}
+
+.progress{font-size:13px;color:var(--muted);margin-bottom:14px;}
+pre.output{background:var(--field);border:1px solid var(--border);padding:16px;border-radius:var(--radius);
+  white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;font-size:12.5px;font-family:var(--mono);
+  color:var(--muted);margin:0;max-height:480px;overflow:auto;}
+
+.tools-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;}
+.tool-card{display:flex;flex-direction:column;gap:3px;background:var(--card);border:1px solid var(--border);
+  border-radius:12px;padding:14px 16px;text-decoration:none;color:var(--ink);
+  transition:border-color .15s,box-shadow .15s,transform .15s;}
+.tool-card:hover{border-color:var(--accent);box-shadow:0 2px 8px rgba(47,111,78,.12);transform:translateY(-1px);}
+.tool-card-name{font-size:13.5px;font-weight:700;color:var(--accent);}
+.tool-card-name::after{content:" \2197";font-weight:600;}
+.tool-card-desc{font-size:12px;color:var(--muted);}
+footer.tools-nav{margin-top:40px;padding-top:20px;border-top:1px solid var(--border);}
+footer.tools-nav .label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--faint);margin-bottom:12px;}
+@media (max-width:480px){
+  .wrap{padding:28px 16px 48px;}
+  h1{font-size:21px;}
+  .btn-row{flex-direction:column;align-items:stretch;}
+  .btn-row .btn{width:100%;text-align:center;}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Case Doc Tracker</h1>
+  <p class="lede">Add document categories your case needs, check them off as collected, and
+    generate a status report. Runs entirely in your browser — nothing is saved or uploaded.</p>
+
+  <h2 class="section">Case</h2>
+  <div class="card">
+    <div class="field">
+      <label for="caseId">Case ID</label>
+      <input type="text" id="caseId" placeholder="e.g. CASE-DEMO-0091" value="CASE-DEMO-0091">
+    </div>
+  </div>
+
+  <h2 class="section">Documents</h2>
+  <div class="card">
+    <div class="doc-label">Document / item — collected?</div>
+    <div id="items">
+      <div class="item"><input type="checkbox" checked aria-label="Include: Government-issued ID"><input type="text" value="Government-issued ID" aria-label="Document category name" oninput="this.previousElementSibling.setAttribute('aria-label','Include: '+this.value)"></div>
+      <div class="item"><input type="checkbox" checked aria-label="Include: Last 3 months account statements"><input type="text" value="Last 3 months account statements" aria-label="Document category name" oninput="this.previousElementSibling.setAttribute('aria-label','Include: '+this.value)"></div>
+      <div class="item"><input type="checkbox" aria-label="Include: Proof of address"><input type="text" value="Proof of address" aria-label="Document category name" oninput="this.previousElementSibling.setAttribute('aria-label','Include: '+this.value)"></div>
+      <div class="item"><input type="checkbox" aria-label="Include: Correspondence log"><input type="text" value="Correspondence log" aria-label="Document category name" oninput="this.previousElementSibling.setAttribute('aria-label','Include: '+this.value)"></div>
+    </div>
+    <div class="add-row">
+      <button class="btn secondary" onclick="addItem()">+ Add Item</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="btn-row">
+      <button class="btn" onclick="generateReport()">Generate Report</button>
+      <button class="btn secondary" onclick="copyShareableSummary()">Copy Shareable Summary</button>
+      <span class="msg success" id="copiedMsg">Copied ✓</span>
+    </div>
+    <div class="progress" id="progress" style="margin-top:16px;"></div>
+    <pre class="output" id="output"></pre>
+  </div>
+
+  <footer class="tools-nav">
+    <div class="label">More tools</div>
+    <div class="tools-grid">
+    <a class="tool-card" href="https://biancabcarlson.github.io/Case-Calculator/" target="_blank" rel="noopener">
+      <span class="tool-card-name">Case Calculator</span>
+      <span class="tool-card-desc">Check the withdrawal/exposure math</span>
+    </a>
+    <a class="tool-card" href="https://biancabcarlson.github.io/Report-Template-Filler/" target="_blank" rel="noopener">
+      <span class="tool-card-name">Report Template Filler</span>
+      <span class="tool-card-desc">Write up the findings</span>
+    </a>
+    <a class="tool-card" href="https://biancabcarlson.github.io/OSINT-Tool/" target="_blank" rel="noopener">
+      <span class="tool-card-name">OSINT Tool</span>
+      <span class="tool-card-desc">Look up the new payee / beneficiary name</span>
+    </a>
+    <a class="tool-card" href="https://biancabcarlson.github.io/Entity-Name-Matcher/" target="_blank" rel="noopener">
+      <span class="tool-card-name">Entity Name Matcher</span>
+      <span class="tool-card-desc">Check name variants against past cases</span>
+    </a>
+    <a class="tool-card" href="https://biancabcarlson.github.io/Case-Timeline-Builder/" target="_blank" rel="noopener">
+      <span class="tool-card-name">Case Timeline Builder</span>
+      <span class="tool-card-desc">Timeline the account events</span>
+    </a>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+function addItem() {
+  const div = document.createElement('div');
+  div.className = 'item';
+  div.innerHTML = `<input type="checkbox" aria-label="Include: new document category"><input type="text" placeholder="New document category" aria-label="Document category name" oninput="this.previousElementSibling.setAttribute('aria-label','Include: '+(this.value||'new document category'))">`;
+  document.getElementById('items').appendChild(div);
+}
+
+function getItems() {
+  const caseId = document.getElementById('caseId').value || "CASE-DEMO";
+  const rows = document.querySelectorAll('#items .item');
+  const collected = [];
+  const outstanding = [];
+
+  rows.forEach(row => {
+    const checked = row.querySelector('input[type=checkbox]').checked;
+    const label = row.querySelector('input[type=text]').value.trim();
+    if (!label) return;
+    (checked ? collected : outstanding).push(label);
+  });
+
+  return { caseId, collected, outstanding };
+}
+
+function generateReport() {
+  const { caseId, collected, outstanding } = getItems();
+
+  document.getElementById('progress').textContent =
+    `Progress: ${collected.length}/${collected.length + outstanding.length} collected`;
+
+  let out = `# Documentation Status — ${caseId}\n\n`;
+  out += `Generated: ${new Date().toISOString()}\n\n`;
+  out += `## ✅ Collected\n`;
+  out += collected.length ? collected.map(c => `- ${c}`).join('\n') : '_None yet._';
+  out += `\n\n## ⬜ Outstanding\n`;
+  out += outstanding.length ? outstanding.map(c => `- ${c}`).join('\n') : '_Nothing outstanding._';
+
+  document.getElementById('output').textContent = out;
+}
+
+function copyShareableSummary() {
+  const { caseId, collected, outstanding } = getItems();
+
+  let summary = `Case ${caseId} — Documentation Status\n\n`;
+  summary += `Still needed from customer:\n`;
+  summary += outstanding.length ? outstanding.map(c => `- ${c}`).join('\n') : '- Nothing outstanding';
+  summary += `\n\nAlready received:\n`;
+  summary += collected.length ? collected.map(c => `- ${c}`).join('\n') : '- Nothing yet';
+
+  navigator.clipboard.writeText(summary).then(() => {
+    const msg = document.getElementById('copiedMsg');
+    msg.classList.add('show');
+    setTimeout(() => msg.classList.remove('show'), 1500);
+  });
+}
+
+generateReport();
+</script>
+
+</body>
+</html>
